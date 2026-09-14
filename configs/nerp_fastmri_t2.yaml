@@ -1,0 +1,37 @@
+method: nerp
+
+model:
+  type: SIREN
+  network_depth: 8
+  network_width: 512
+  network_output_size: 1
+  w0: 30
+
+encoder:
+  type: gaussian_fourier
+  coordinates_size: 2
+  embedding_size: 256
+  scale: 3.0
+
+prior_embedding:
+  iterations: 1000
+  optimizer: Adam
+  learning_rate: 0.0001
+  beta1: 0.9
+  beta2: 0.999
+  weight_decay: 0.0001
+
+reconstruction:
+  iterations: 1000
+  optimizer: Adam
+  learning_rate: 0.00001
+  beta1: 0.9
+  beta2: 0.999
+  weight_decay: 0.0
+
+fastmri_adaptation:
+  acquisition: AXT2
+  output_domain: reconstruction_fov
+  output_shape: [384, 384]
+  accelerations: [4, 8]
+  forward_model: multicoil_sense_cartesian

@@ -1,0 +1,50 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+
+# Environments
+.env
+.venv/
+venv/
+conda-env/
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+
+# Datasets
+data/
+extracted/
+datasets/
+
+# Experiment artifacts
+cache/
+outputs/
+checkpoints/
+slurm_logs/
+wandb/
+logs/
+
+# Large model files
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+
+# Medical imaging / raw data
+*.h5
+*.hdf5
+*.nii
+*.nii.gz
+
+# External repositories
+external/
+
+# Temporary
+*.tmp
+*.swp
+*~

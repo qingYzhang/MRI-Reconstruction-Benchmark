@@ -1,0 +1,28 @@
+diff --git a/submodules/diffusers/src/diffusers/pipelines/pipeline_utils.py b/submodules/diffusers/src/diffusers/pipelines/pipeline_utils.py
+index 0618764..9368980 100755
+--- a/submodules/diffusers/src/diffusers/pipelines/pipeline_utils.py
++++ b/submodules/diffusers/src/diffusers/pipelines/pipeline_utils.py
+@@ -67,9 +67,20 @@ from ..utils.torch_utils import is_compiled_module
+ if is_transformers_available():
+     import transformers
+     from transformers import PreTrainedModel
+-    from transformers.utils import FLAX_WEIGHTS_NAME as TRANSFORMERS_FLAX_WEIGHTS_NAME
+-    from transformers.utils import SAFE_WEIGHTS_NAME as TRANSFORMERS_SAFE_WEIGHTS_NAME
+-    from transformers.utils import WEIGHTS_NAME as TRANSFORMERS_WEIGHTS_NAME
++
++    try:
++        from transformers.utils import (
++            FLAX_WEIGHTS_NAME as TRANSFORMERS_FLAX_WEIGHTS_NAME,
++        )
++    except ImportError:
++        TRANSFORMERS_FLAX_WEIGHTS_NAME = "flax_model.msgpack"
++
++    from transformers.utils import (
++        SAFE_WEIGHTS_NAME as TRANSFORMERS_SAFE_WEIGHTS_NAME,
++    )
++    from transformers.utils import (
++        WEIGHTS_NAME as TRANSFORMERS_WEIGHTS_NAME,
++    )
+ 
+ from ..utils import FLAX_WEIGHTS_NAME, ONNX_EXTERNAL_WEIGHTS_NAME, ONNX_WEIGHTS_NAME, PushToHubMixin
+ 
