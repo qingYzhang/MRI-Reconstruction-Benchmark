@@ -565,7 +565,7 @@ def main():
         target_slices = []
         prediction_slices = []
 
-        alpha_values = []
+        calibration_scale_values = []
         sampling_values = []
         acs_values = []
 
@@ -706,28 +706,41 @@ def main():
                     - t0
                 )
 
-                alpha = (
-                    acquired_scale_alpha(
-                        predicted_kspace=
-                            predicted_kspace,
+                #
+                # Corrected target-free amplitude calibration.
+                #
+                # raw_image is first restored from normalized
+                # model space to adapted fastMRI measurement units.
+                #
+                raw_image = (
+                    rss_scaled[
+                        0
+                    ]
+                    * measurement_scale
+                )
 
-                        measured_kspace=
-                            measured_scaled,
-
-                        mask=
-                            mask,
+                calibration_scale = (
+                    torch.linalg.vector_norm(
+                        zf
+                    )
+                    /
+                    torch.linalg.vector_norm(
+                        raw_image
+                    ).clamp_min(
+                        1e-12
                     )
                 )
 
                 prediction_raw = (
-                    rss_scaled[
-                        0
-                    ]
-                    * torch.abs(
-                        alpha
-                    )
-                    * measurement_scale
+                    raw_image
+                    * calibration_scale
                 )
+
+                #
+                # Alias retained only for the existing scalar
+                # bookkeeping below; this is NOT a complex alpha.
+                #
+                alpha = calibration_scale
 
             if not torch.isfinite(
                 prediction_raw
@@ -753,7 +766,7 @@ def main():
                 .numpy()
             )
 
-            alpha_values.append(
+            calibration_scale_values.append(
                 float(
                     torch.abs(
                         alpha
@@ -894,17 +907,17 @@ def main():
             "max_value_256":
                 max_value_256,
 
-            "alpha_abs_mean":
+            "calibration_scale_mean":
                 float(
                     np.mean(
-                        alpha_values
+                        calibration_scale_values
                     )
                 ),
 
-            "alpha_abs_std":
+            "calibration_scale_std":
                 float(
                     np.std(
-                        alpha_values
+                        calibration_scale_values
                     )
                 ),
 
@@ -925,8 +938,7 @@ def main():
 
             "output_calibration":
                 (
-                    "acquired_kspace_"
-                    "complex_least_squares"
+                    "zf_rss_l2_norm_match"
                 ),
         }
 
@@ -945,8 +957,8 @@ def main():
             f"{metrics['psnr']:.3f} "
             f"| SSIM="
             f"{metrics['ssim']:.4f} "
-            f"| |alpha|="
-            f"{np.mean(alpha_values):.4f}",
+            f"| zf_l2_scale="
+            f"{np.mean(calibration_scale_values):.4f}",
             flush=True,
         )
 

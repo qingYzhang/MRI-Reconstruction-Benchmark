@@ -942,26 +942,66 @@ def calibrated_metrics(
     target_raw,
 ):
 
-    alpha = (
-        acquired_scale_alpha(
-            predicted_kspace=
-                predicted_kspace,
+    #
+    # Corrected fastMRI adaptation:
+    #
+    # The Shamaei source-style SSIM training is independently
+    # max-normalized and therefore does not constrain global
+    # output amplitude reliably.
+    #
+    # Anchor the reconstructed RSS magnitude to the acquired
+    # measurements using the zero-filled RSS L2 norm:
+    #
+    #   s = ||ZF(y)||_2 / ||x_raw||_2
+    #
+    # This uses acquired k-space only and never accesses the
+    # target image when estimating the scale.
+    #
+    from data.fastmri_brain import zero_filled_rss
 
-            measured_kspace=
-                measured_scaled,
-
-            mask=
-                mask,
+    zf_scaled = (
+        zero_filled_rss(
+            measured_scaled[
+                0
+            ],
+            (
+                FASTMRI_256_SIZE,
+                FASTMRI_256_SIZE,
+            ),
+        )
+        .to(
+            rss_scaled.device,
+            dtype=rss_scaled.dtype,
         )
     )
 
-    prediction_raw = (
+    raw_scaled_image = (
         rss_scaled[
             0
         ]
-        * torch.abs(
-            alpha
+    )
+
+    calibration_scale = (
+        torch.linalg.vector_norm(
+            zf_scaled
         )
+        /
+        torch.linalg.vector_norm(
+            raw_scaled_image
+        ).clamp_min(
+            1e-12
+        )
+    )
+
+    #
+    # Keep this local alias temporarily so the remainder of the
+    # existing metrics function can retain its scalar bookkeeping.
+    #
+    alpha = calibration_scale
+
+    prediction_raw = (
+        raw_scaled_image
+        * calibration_scale
         * measurement_scale
     )
 
@@ -1072,7 +1112,7 @@ def calibrated_metrics(
         "ssim":
             ssim,
 
-        "alpha_abs":
+        "calibration_scale":
             float(
                 torch.abs(
                     alpha
@@ -1270,8 +1310,7 @@ def save_checkpoint(
 
             "output_calibration":
                 (
-                    "acquired_kspace_"
-                    "complex_least_squares"
+                    "zf_rss_l2_norm_match"
                 ),
 
             "acceleration":
@@ -1663,7 +1702,7 @@ def validate(
                 "ssim"
             ],
             metrics[
-                "alpha_abs"
+                "calibration_scale"
             ],
         ]
 
@@ -1736,7 +1775,7 @@ def validate(
             reduced[3]
             / count,
 
-        "alpha_abs_mean":
+        "calibration_scale_mean":
             reduced[4]
             / count,
 
@@ -2289,8 +2328,8 @@ def main():
                 f"{val_result['calibrated_psnr']:.3f} "
                 f"| val_cal_SSIM="
                 f"{val_result['calibrated_ssim']:.6f} "
-                f"| mean_|alpha|="
-                f"{val_result['alpha_abs_mean']:.6f} "
+                f"| mean_zf_l2_scale="
+                f"{val_result['calibration_scale_mean']:.6f} "
                 f"| lr="
                 f"{current_lr:.3e} "
                 f"| best="
@@ -2331,9 +2370,9 @@ def main():
                         "calibrated_ssim"
                     ],
 
-                "val_alpha_abs_mean":
+                "val_zf_l2_scale_mean":
                     val_result[
-                        "alpha_abs_mean"
+                        "calibration_scale_mean"
                     ],
 
                 "learning_rate":
